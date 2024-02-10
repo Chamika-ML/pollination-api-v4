@@ -80,3 +80,13 @@ e) LOAD DATA INFILE '/var/lib/mysql-files/weather_description_map.csv'
    OPTIONALLY ENCLOSED BY '"'
    LINES TERMINATED BY '\n'
    IGNORE 1 LINES;
+
+
+10. go to first rerminal 
+cd pollination-api-v4
+sudo apt-get install python3-venv
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+gunicorn -w 4 -b 0.0.0.0:5000 --timeout 0 main:app

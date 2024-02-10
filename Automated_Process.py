@@ -51,22 +51,22 @@ FINAL_WEATHER_DATA_FILE_QUERY = "SELECT * FROM final_weather_data"
 
 PDF_PI_TABLE = "grid_pdf_pi"
 FINAL_WEATHER_TABLE = "final_weather_data"
-
+MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"dilshan", "password":"1234", "database":"broodbox", "port":3306}
 
 # ## Database Functions 
 
 # In[2]:
 
 
-def read_data_from_mesql(query,host='127.0.0.1', user='root', password ='', database='broodbox'):
+def read_data_from_mesql(query,credentials=MYSQL_CREDENTIALS):
     
     """this function uses to read mysql table and returns it as a dataframe"""
     # Connect to the MySQL server
     connection = mysql.connector.connect(
-        host=host,
-        user=user,
-        password=password,
-        database=database
+        host=credentials["host"],
+        user=credentials["user"],
+        password=credentials["password"],
+        database=credentials["database"]
     )
     
     # Create a cursor object to interact with the database
@@ -89,22 +89,22 @@ def read_data_from_mesql(query,host='127.0.0.1', user='root', password ='', data
     return df
 
 
-def create_mysql_table(dataset, table_name, host='127.0.0.1', user='root', password ='', database='broodbox',port = 3306):
+def create_mysql_table(dataset, table_name, credentials=MYSQL_CREDENTIALS):
     
     "this function creates a table in mysql database using pandas dataframe"
     
-    engine = create_engine(f'mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}', connect_args={"connect_timeout": 28800})
+    engine = create_engine(f'mysql+mysqlconnector://{credentials["user"]}:{credentials["password"]}@{credentials["host"]}:{credentials["port"]}/{credentials["database"]}', connect_args={"connect_timeout": 28800})
 
     dataset.to_sql(table_name, con=engine, if_exists='replace', index=False)
     
     engine.dispose()
     
     
-def table_exist_mysql_database(table_name, host='127.0.0.1', user='root', password ='', database='broodbox',port = 3306):
+def table_exist_mysql_database(table_name, credentials=MYSQL_CREDENTIALS):
     
     "this function returns true if the given tables exists in the mysql database , other wise it rerurns false"
     # Create a MySQL connection
-    engine = create_engine(f'mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}')
+    engine = create_engine(f'mysql+mysqlconnector://{credentials["user"]}:{credentials["password"]}@{credentials["host"]}:{credentials["port"]}/{credentials["database"]}')
 
     # Check if the dataset exists
     inspector = inspect(engine)
@@ -120,7 +120,6 @@ def table_exist_mysql_database(table_name, host='127.0.0.1', user='root', passwo
     engine.dispose()
 
     return exist
-
 
 # ## Spatial Functions 
 
