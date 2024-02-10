@@ -31,25 +31,26 @@ def home():
 
 def save_map():
 
-    lat_boundaries = list(eval(str(request.args.get("lat_boundaries"))))
-    long_boundaries = list(eval(str(request.args.get("long_boundaries"))))
+    try:
+        lat_boundaries = list(eval(str(request.args.get("lat_boundaries"))))
+        long_boundaries = list(eval(str(request.args.get("long_boundaries"))))
 
-    spatial_html_content,finalmap_html_content = final_maps_api_parallel(lat_boundaries,long_boundaries,API_KEYS)
-       
-        # if the hivelocaton data is not entered
-    if (spatial_html_content==False) and (finalmap_html_content==False):
-        data_set_map = {"final_map":"please provide valied hive locations", "spatial_map":"please provide valied hive locations"}
-    else:
-        data_set_map = {"final_map":finalmap_html_content, "spatial_map":spatial_html_content}
- 
-    json_dump_map = json.dumps(data_set_map)
-    return json_dump_map
+        spatial_html_content,finalmap_html_content = final_maps_api_parallel(lat_boundaries,long_boundaries,API_KEYS)
+        
+            # if the hivelocaton data is not entered
+        if (spatial_html_content==False) and (finalmap_html_content==False):
+            data_set_map = {"final_map":"please provide valied hive locations", "spatial_map":"please provide valied hive locations"}
+        else:
+            data_set_map = {"final_map":finalmap_html_content, "spatial_map":spatial_html_content}
     
-"""    except Exception as e:
-        data_set_map = {"final_map":str(e), "spatial_map":"Server error please try again"}
         json_dump_map = json.dumps(data_set_map)
         return json_dump_map
-"""
+        
+    except Exception as e:
+        data_set_map = {"error":str(e)}
+        json_dump_map = json.dumps(data_set_map)
+        return json_dump_map
+
         
 @app.route("/timing/",  methods=['GET'])
 
@@ -66,7 +67,7 @@ def processing_time_calculation():
         return json_dump
      
     except Exception as e:
-        data_set = {"time":str(e), "message":"Server error please try again"}
+        data_set = {"error":str(e)}
         json_dump = json.dumps(data_set)
         return json_dump
     

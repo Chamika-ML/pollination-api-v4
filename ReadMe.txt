@@ -35,7 +35,7 @@ CREATE DATABASE broodbox;
 CREATE USER 'dilshan'@'localhost' IDENTIFIED BY '1234'; 
 GRANT ALL PRIVILEGES ON broodbox.* TO 'dilshan'@'localhost';
 FLUSH PRIVILEGES;
-EXIT;
+
 (here 1234 the password of the user)
 
 7.create table
@@ -52,11 +52,11 @@ CREATE TABLE `weather_description_map` (
 
 8. clone the git repo
 open new terminal 
-git clone https://github.com/Chamika-ML/database-api.git
+git clone https://github.com/Chamika-ML/pollination-api-v4.git
 
 
 
-9. insert hvie_details.csv file data to table
+9. insert hvie_details.csv and weather_description_map file data to table
 
 go to first
 a) SHOW VARIABLES LIKE "secure_file_priv";
