@@ -51,7 +51,8 @@ FINAL_WEATHER_DATA_FILE_QUERY = "SELECT * FROM final_weather_data"
 
 PDF_PI_TABLE = "grid_pdf_pi"
 FINAL_WEATHER_TABLE = "final_weather_data"
-MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"dilshan", "password":"1234", "database":"broodbox", "port":3306}
+#MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"dilshan", "password":"1234", "database":"broodbox", "port":3306}
+MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"root", "password":"", "database":"broodbox", "port":3306}
 
 # ## Database Functions 
 

@@ -81,8 +81,11 @@ e) LOAD DATA INFILE '/var/lib/mysql-files/weather_description_map.csv'
    LINES TERMINATED BY '\n'
    IGNORE 1 LINES;
 
+10. go the the Automated_process.py and uncomment
+MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"dilshan", "password":"1234", "database":"broodbox", "port":3306}
+and comment other one
 
-10. go to first rerminal 
+11. go to first rerminal 
 cd pollination-api-v4
 sudo apt-get install python3-venv
 python3 -m venv venv
