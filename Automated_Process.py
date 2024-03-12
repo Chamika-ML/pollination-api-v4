@@ -35,6 +35,7 @@ import mysql.connector
 from sqlalchemy import create_engine, inspect
 
 from download_weather_data import create_weather_dataset,temporal_processing_time_parallel
+from datetime import datetime
 
 #PDF_PI_FILE_PATH = "./results/csv/grid_pdf_pi.csv"
 #HIVE_DETAILS_FILE_PATH = "./data/csv/hive_detailss.csv"
@@ -44,24 +45,28 @@ SPATIAL_MAP_SAVE_PATH = "./results/maps/spatial_map.html"
 FINAL_MAP_SAVE_PATH = "./results/maps/final_map.html"
 
 
-HIVE_DETAILS_QUERY = "SELECT * FROM hive_details"
-WEATHER_DESCRIPTION_QUERY = "SELECT * FROM weather_description_map"
-PDF_PI_FILE_QUERY = "SELECT * FROM grid_pdf_pi"
-FINAL_WEATHER_DATA_FILE_QUERY = "SELECT * FROM final_weather_data"
+#HIVE_DETAILS_QUERY = "SELECT * FROM hive_details"
+#WEATHER_DESCRIPTION_QUERY = "SELECT * FROM weather_description_map"
+#PDF_PI_FILE_QUERY = "SELECT * FROM grid_pdf_pi"
+#FINAL_WEATHER_DATA_FILE_QUERY = "SELECT * FROM final_weather_data"
 
-PDF_PI_TABLE = "grid_pdf_pi"
-FINAL_WEATHER_TABLE = "final_weather_data"
-#MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"dilshan", "password":"1234", "database":"broodbox", "port":3306}
-MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"root", "password":"", "database":"broodbox", "port":3306}
+WEATHER_DESCRIPTION_TABLE = "weather_description_map"
+HIVE_DETAILS_TABLE_PREFIX = "hive_details"
+PDF_PI_TABLE_PREFIX = "grid_pdf_pi"
+FINAL_WEATHER_TABLE_PREFIX = "final_weather_data"
+MAPS_TABLE_PREFIX = "maps"
+
+MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"dilshan", "password":"1234", "database":"broodbox", "port":3306}
+#MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"root", "password":"", "database":"broodbox", "port":3306}
 
 # ## Database Functions 
 
 # In[2]:
 
 
-def read_data_from_mesql(query,credentials=MYSQL_CREDENTIALS):
+def read_data_from_mesql(TABLE_NAME,credentials=MYSQL_CREDENTIALS, last_raw=False):
     
-    """this function uses to read mysql table and returns it as a dataframe"""
+    """this function uses to read mysql table and returns it as a dataframe. if last_raw=True then this will returns last raw of the table"""
     # Connect to the MySQL server
     connection = mysql.connector.connect(
         host=credentials["host"],
@@ -70,6 +75,10 @@ def read_data_from_mesql(query,credentials=MYSQL_CREDENTIALS):
         database=credentials["database"]
     )
     
+    if last_raw:
+        query = f"SELECT * FROM {TABLE_NAME} ORDER BY id DESC LIMIT 1"
+    else:
+        query = f"SELECT * FROM {TABLE_NAME}"
     # Create a cursor object to interact with the database
     cursor = connection.cursor()
     
@@ -100,7 +109,7 @@ def create_mysql_table(dataset, table_name, credentials=MYSQL_CREDENTIALS):
     
     engine.dispose()
     
-    
+   
 def table_exist_mysql_database(table_name, credentials=MYSQL_CREDENTIALS):
     
     "this function returns true if the given tables exists in the mysql database , other wise it rerurns false"
@@ -122,6 +131,48 @@ def table_exist_mysql_database(table_name, credentials=MYSQL_CREDENTIALS):
 
     return exist
 
+
+def insert_values_totable(table_name,spatial_map,final_map,credentials=MYSQL_CREDENTIALS):
+
+    """This function inserts data to maps table. if maps tables not exist then first it will creates a maps table and then insert the data"""
+     # Connect to the MySQL server
+    connection = mysql.connector.connect(
+        host=credentials["host"],
+        user=credentials["user"],
+        password=credentials["password"],
+        database=credentials["database"]
+    )
+
+    cursor = connection.cursor()
+    
+    if not table_exist_mysql_database(table_name, credentials=MYSQL_CREDENTIALS):
+        create_table_sql = f"""
+        CREATE TABLE {table_name} (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            date DATE,
+            time TIME,
+            spatial_map LONGTEXT,
+            final_map LONGTEXT 
+        )
+        """
+        cursor.execute(create_table_sql)
+        connection.commit()
+
+    current_date = datetime.now().date()
+    current_time = datetime.now().time()
+
+    insert_sql = f"""
+    INSERT INTO {table_name} (date, time, spatial_map, final_map)
+    VALUES (%s, %s, %s, %s)
+    """
+
+    cursor.execute(insert_sql, (current_date, current_time, spatial_map, final_map))
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    
 # ## Spatial Functions 
 
 # In[3]:
@@ -238,11 +289,11 @@ def convert_one_probability(prob_dist_arr):
     return norm_sum_prob_arr
 
 
-def spatial_probability_dataset(lat,long):
+def spatial_probability_dataset(lat,long,HIVE_DETAILS_TABLE,PDF_PI_TABLE):
     
     """This is the finla function. this function call all the above funcions to make the sptial probabilities"""
     
-    hive_details_dataset = read_data_from_mesql(HIVE_DETAILS_QUERY)
+    hive_details_dataset = read_data_from_mesql(HIVE_DETAILS_TABLE)
     
     distances = distance_matrix(lat,long,hive_details_dataset)
     porbabilities = probability_matrix(distances,hive_details_dataset)  
@@ -250,7 +301,7 @@ def spatial_probability_dataset(lat,long):
     
     data = {'id':np.arange(1,len(norm_sum_prob_arr)+1,1), 'longitude':long,'latitude':lat, 'spatial_prob':norm_sum_prob_arr}
     dataset = pd.DataFrame(data)
-    create_mysql_table(dataset, "grid_pdf_pi")
+    create_mysql_table(dataset, PDF_PI_TABLE)
     
 
 
@@ -327,18 +378,18 @@ def should_spatial_probability_call(file_path):
    
     return update
                          
-def final_probability(data_set,lat,long):
+def final_probability(data_set,lat,long,PDF_PI_TABLE,HIVE_DETAILS_TABLE):
     
     table_exist = table_exist_mysql_database(PDF_PI_TABLE)
     #load spatial porbability data set 
     if table_exist==False:
-        spatial_probability_dataset(lat,long)
-        spatial_prob_data = read_data_from_mesql(PDF_PI_FILE_QUERY)
+        spatial_probability_dataset(lat,long,HIVE_DETAILS_TABLE,PDF_PI_TABLE)
+        spatial_prob_data = read_data_from_mesql(PDF_PI_TABLE)
     else:
-        spatial_prob_data = read_data_from_mesql(PDF_PI_FILE_QUERY)
+        spatial_prob_data = read_data_from_mesql(PDF_PI_TABLE)
       
     #load weather description porbability data set
-    weather_desc_data = read_data_from_mesql(WEATHER_DESCRIPTION_QUERY)
+    weather_desc_data = read_data_from_mesql(WEATHER_DESCRIPTION_TABLE)
     # genarate weather probability using mean ratings
     weather_desc_data["probability"] = (weather_desc_data["mean_ratings"]-1)/(10-1)
 
@@ -794,10 +845,10 @@ def make_mask_dataset(lat_boundaries,long_boundaries,data_set):
 # In[10]:
 
 
-def spatial_processing_time(lat_boundaries,long_boundaries):
+def spatial_processing_time(lat_boundaries,long_boundaries,HIVE_DETAILS_TABLE):
     """this function returns approximation time to calculate spatial probabilities"""
     latitudes,longitudes,cols, raws = user_input_boundaries_to_latlong(lat_boundaries,long_boundaries)
-    hive_details_dataset = read_data_from_mesql(HIVE_DETAILS_QUERY)
+    hive_details_dataset = read_data_from_mesql(HIVE_DETAILS_TABLE)
     no_of_locations = len(hive_details_dataset)
     num_of_points = no_of_locations*cols*raws
 
@@ -819,16 +870,16 @@ def temporal_processing_time(lat_boundaries,long_boundaries,speed_up=4,api_speed
         
     return approx_time_mins
 
-def spatial_heatmap(lat,long,lat_boundaries, long_boundaries, image_path=" "):
+def spatial_heatmap(lat,long,lat_boundaries, long_boundaries,HIVE_DETAILS_TABLE,PDF_PI_TABLE,image_path=" "):
     """This function returns the spatial heatmap"""  
     #load spatial porbability data set
     table_exist = table_exist_mysql_database(PDF_PI_TABLE)
     #load spatial porbability data set 
     if table_exist==False:
-        spatial_probability_dataset(lat,long)
-        dataset = read_data_from_mesql(PDF_PI_FILE_QUERY)
+        spatial_probability_dataset(lat,long,HIVE_DETAILS_TABLE,PDF_PI_TABLE)
+        dataset = read_data_from_mesql(PDF_PI_TABLE)
     else:
-        dataset = read_data_from_mesql(PDF_PI_FILE_QUERY)
+        dataset = read_data_from_mesql(PDF_PI_TABLE)
 
     #applying masking
     dataset = make_mask_dataset(lat_boundaries,long_boundaries,dataset)
@@ -1036,7 +1087,7 @@ def final_heatmap(lat_boundaries, long_boundaries, dataset, image_path=" "):
 # In[11]:
 
 
-def final_maps_api(lat_boundaries,long_boundaries):    
+def final_maps_api(lat_boundaries,long_boundaries,PDF_PI_TABLE,FINAL_WEATHER_TABLE,HIVE_DETAILS_TABLE):    
     """This is the final fuction that we need to call when we are using api when we use user defined boundaries"""
     
     box_lat_list, box_long_list = find_box(lat_boundaries,long_boundaries)
@@ -1050,9 +1101,9 @@ def final_maps_api(lat_boundaries,long_boundaries):
     lat, long, cols, raws = api_to_latlong(lat_boundaries,long_boundaries)
     dataset = download_weather_data_old(lat,long,cols, raws)
     dataset = add_date_time(dataset)
-    dataset = final_probability(dataset,lat,long)
+    dataset = final_probability(dataset,lat,long,PDF_PI_TABLE,HIVE_DETAILS_TABLE)
        
-    spatial_map = spatial_heatmap(lat,long,lat_boundaries, long_boundaries)  
+    spatial_map = spatial_heatmap(lat,long,lat_boundaries, long_boundaries,HIVE_DETAILS_TABLE,PDF_PI_TABLE)  
     final_map = final_heatmap(lat_boundaries, long_boundaries,dataset)
     create_mysql_table(dataset, FINAL_WEATHER_TABLE)
     
@@ -1068,41 +1119,57 @@ def final_maps_api(lat_boundaries,long_boundaries):
     return spatial_html_content,finalmap_html_content
 
 
-def final_maps_api_parallel(lat_boundaries,long_boundaries,api_keys):
+def final_maps_api_parallel(lat_boundaries,long_boundaries,api_keys,bid,fid):
 
     """This is the final fuction that we need to call when we are using api when we use user defined boundaries and parallel downloading"""
- 
+    HIVE_DETAILS_TABLE = f"{HIVE_DETAILS_TABLE_PREFIX}_{bid}_{fid}"
+    PDF_PI_TABLE = f"{PDF_PI_TABLE_PREFIX}_{bid}_{fid}"
+    FINAL_WEATHER_TABLE = f"{FINAL_WEATHER_TABLE_PREFIX}_{bid}_{fid}"
+    MAPS_TABLE = f"{MAPS_TABLE_PREFIX}_{bid}_{fid}"
+    
     dataset,lat,long,cols,raws = create_weather_dataset(lat_boundaries,long_boundaries,api_keys)
     dataset = add_date_time(dataset)
-    dataset = final_probability(dataset,lat,long)
+    dataset = final_probability(dataset,lat,long,PDF_PI_TABLE,HIVE_DETAILS_TABLE)
        
-    spatial_map = spatial_heatmap(lat,long,lat_boundaries, long_boundaries)  
+    spatial_map = spatial_heatmap(lat,long,lat_boundaries, long_boundaries,HIVE_DETAILS_TABLE,PDF_PI_TABLE)  
     final_map = final_heatmap(lat_boundaries, long_boundaries,dataset)
     create_mysql_table(dataset, FINAL_WEATHER_TABLE)
 
+    
     spatial_map.save(SPATIAL_MAP_SAVE_PATH)
     final_map.save(FINAL_MAP_SAVE_PATH)
 
     with open(SPATIAL_MAP_SAVE_PATH, 'r', encoding='utf-8') as file_sp:
-        spatial_html_content = file_sp.read()
+        spatial_html_content_data = file_sp.read()
         
     with open(FINAL_MAP_SAVE_PATH, 'r', encoding='utf-8') as file_fn:
-        finalmap_html_content = file_fn.read()
+        finalmap_html_content_data = file_fn.read()
+    
+    # insert map values to the maps table
+    insert_values_totable(MAPS_TABLE,spatial_html_content_data,finalmap_html_content_data)
+    # remove saved maps on the server
+    os.remove(SPATIAL_MAP_SAVE_PATH)
+    os.remove(FINAL_MAP_SAVE_PATH)
+
+    maps_data = read_data_from_mesql(MAPS_TABLE, last_raw=True)
+
+    spatial_html_content = maps_data["spatial_map"].values[0]
+    finalmap_html_content = maps_data["final_map"].values[0]
 
     return spatial_html_content,finalmap_html_content
 
 
-def final_maps(lat_boundaries,long_boundaries,api_keys):
+def final_maps(lat_boundaries,long_boundaries,api_keys,PDF_PI_TABLE,FINAL_WEATHER_TABLE,HIVE_DETAILS_TABLE):
     
     """This is the final fuction that we need to call when we are using this notebook"""
 
-    time= temporal_processing_time(lat_boundaries,long_boundaries) + spatial_processing_time(lat_boundaries,long_boundaries)
+    time= temporal_processing_time(lat_boundaries,long_boundaries) + spatial_processing_time(lat_boundaries,long_boundaries,HIVE_DETAILS_TABLE)
     print(f"This will take {time} mins to complete")
     dataset,lat, long,cols,raws = create_weather_dataset(lat_boundaries,long_boundaries,api_keys)
     dataset = add_date_time(dataset)
-    dataset = final_probability(dataset,lat,long)
+    dataset = final_probability(dataset,lat,long,PDF_PI_TABLE,HIVE_DETAILS_TABLE)
     
-    spatial_map = spatial_heatmap(lat,long,lat_boundaries, long_boundaries)  
+    spatial_map = spatial_heatmap(lat,long,lat_boundaries, long_boundaries,HIVE_DETAILS_TABLE,PDF_PI_TABLE)  
     final_map = final_heatmap(lat_boundaries, long_boundaries,dataset)
     create_mysql_table(dataset, FINAL_WEATHER_TABLE)
 

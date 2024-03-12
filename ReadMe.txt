@@ -40,7 +40,7 @@ FLUSH PRIVILEGES;
 
 7.create table
 USE broodbox;
-CREATE TABLE `hive_details` (
+CREATE TABLE `hive_details_B456_123` (
  `area_code` varchar(20), `location_code` varchar(20),  `longitude` double, 
 `latitude` float, `total_beehives` int(20), `total_active_frames` int(20),
 PRIMARY KEY (`area_code`, `location_code`));
@@ -68,7 +68,7 @@ c) sudo mv /home/ubuntu/pollination-api-v4/data/csv/weather_description_map.csv 
 
 go to first terminal
 d) LOAD DATA INFILE '/var/lib/mysql-files/hive_details.csv'
-   INTO TABLE `hive_details`
+   INTO TABLE `hive_details_B456_123`
    FIELDS TERMINATED BY ','
    OPTIONALLY ENCLOSED BY '"'
    LINES TERMINATED BY '\n'
