@@ -29,34 +29,20 @@ sudo su
 mysql -u root -p
 give a password  (12345)
 
+(All other steps are covered in the database API readme file)
 
-4. Create a database and user, and grant privileges:
-CREATE DATABASE broodbox;
-CREATE USER 'dilshan'@'localhost' IDENTIFIED BY '1234'; 
-GRANT ALL PRIVILEGES ON broodbox.* TO 'dilshan'@'localhost';
-FLUSH PRIVILEGES;
-
-(here 1234 the password of the user)
-
-7.create table
-USE broodbox;
-CREATE TABLE `hive_details_B456_123` (
- `area_code` varchar(20), `location_code` varchar(20),  `longitude` double, 
-`latitude` float, `total_beehives` int(20), `total_active_frames` int(20),
-PRIMARY KEY (`area_code`, `location_code`));
-
-CREATE TABLE `weather_description_map` (
+4.CREATE TABLE `weather_description_map` (
  `weather_id` int(100), `weather_id_ group` text(255),  `weather_id_description` text(255), 
 `mean_ratings` float);
 
 
-8. clone the git repo
+5. clone the git repo
 open new terminal 
 git clone https://github.com/Chamika-ML/pollination-api-v4.git
 
 
 
-9. insert hvie_details.csv and weather_description_map file data to table
+6. insert hvie_details.csv and weather_description_map file data to table
 
 go to first
 a) SHOW VARIABLES LIKE "secure_file_priv";
@@ -81,15 +67,18 @@ e) LOAD DATA INFILE '/var/lib/mysql-files/weather_description_map.csv'
    LINES TERMINATED BY '\n'
    IGNORE 1 LINES;
 
-10. go the the Automated_process.py and uncomment
+7. go the the Automated_process.py and uncomment
 MYSQL_CREDENTIALS = {"host":"127.0.0.1", "user":"dilshan", "password":"1234", "database":"broodbox", "port":3306}
 and comment other one
 
-11. go to first rerminal 
+8. go to first rerminal 
 cd pollination-api-v4
 sudo apt-get install python3-venv
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv venv2
+source venv2/bin/activate
 pip install -r requirements.txt
 
-gunicorn -w 4 -b 0.0.0.0:5000 --timeout 0 main:app
+gunicorn -w 4 -b 0.0.0.0:5001 --timeout 0 main:app
+
+
+
