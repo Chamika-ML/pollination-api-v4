@@ -1155,8 +1155,9 @@ def final_maps_api_parallel(lat_boundaries,long_boundaries,api_keys,bid,fid):
 
     spatial_html_content = maps_data["spatial_map"].values[0]
     finalmap_html_content = maps_data["final_map"].values[0]
-
-    return spatial_html_content,finalmap_html_content
+    map_id =  maps_data["id"].values[0]
+    
+    return spatial_html_content,finalmap_html_content, map_id
 
 
 def final_maps(lat_boundaries,long_boundaries,api_keys,PDF_PI_TABLE,FINAL_WEATHER_TABLE,HIVE_DETAILS_TABLE):
