@@ -18,7 +18,7 @@ warnings.filterwarnings('ignore')
 import multiprocessing
 
 NO_OF_THREADS = 5
-
+MS_TO_KMH = 3.6
 
 # In[2]:
 
@@ -131,10 +131,10 @@ def download_weather_data_raw(latitudes,longitudes,cols,api,speed_up=4):
         data = res.json()
 
         # create the data list that we want from the json data 
-        data_vec = [piangil_time,long, lat, data["main"]["temp"], data["main"]["humidity"], data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_1 = [piangil_time,longitudes[speed_up*i+1], latitudes[speed_up*i+1], data["main"]["temp"], data["main"]["humidity"], data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_2 = [piangil_time,longitudes[speed_up*i+2], latitudes[speed_up*i+2], data["main"]["temp"], data["main"]["humidity"], data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_3 = [piangil_time,longitudes[speed_up*i+3], latitudes[speed_up*i+3], data["main"]["temp"], data["main"]["humidity"], data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+        data_vec = [piangil_time,long, lat, data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+        data_vec_1 = [piangil_time,longitudes[speed_up*i+1], latitudes[speed_up*i+1], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+        data_vec_2 = [piangil_time,longitudes[speed_up*i+2], latitudes[speed_up*i+2], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+        data_vec_3 = [piangil_time,longitudes[speed_up*i+3], latitudes[speed_up*i+3], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
 
 
         #update the data frame
@@ -147,7 +147,7 @@ def download_weather_data_raw(latitudes,longitudes,cols,api,speed_up=4):
         if(i%((int(cols/speed_up))-1)==0) and (cols%speed_up !=0) and (i!=0):
             num = cols%speed_up
             for j in range(num):
-                data_vec_j = [piangil_time,longitudes[speed_up*i+3+(j+1)], latitudes[speed_up*i+3+(j+1)], data["main"]["temp"], data["main"]["humidity"], data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+                data_vec_j = [piangil_time,longitudes[speed_up*i+3+(j+1)], latitudes[speed_up*i+3+(j+1)], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
                 grid_point_Weather_data.loc[speed_up*i+3+(j+1)] = data_vec_j
                 #print(f"this is done when step is equals to {i+1}")
 
