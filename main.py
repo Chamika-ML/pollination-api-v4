@@ -83,8 +83,9 @@ def save_map():
         long_boundaries = list(eval(str(request.args.get("long_boundaries"))))
         BID = str(request.args.get("business_id"))
         FID = str(request.args.get("farm_id"))
+        time_zone = str(request.args.get("time_zone"))
 
-        spatial_html_content,finalmap_html_content,map_id = final_maps_api_parallel(lat_boundaries,long_boundaries,API_KEYS,BID,FID)
+        spatial_html_content,finalmap_html_content,map_id = final_maps_api_parallel(lat_boundaries,long_boundaries,API_KEYS,BID,FID,time_zone)
         
         # if the hivelocaton data is not entered
         if (spatial_html_content==False) and (finalmap_html_content==False):

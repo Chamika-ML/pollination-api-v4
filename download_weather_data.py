@@ -96,7 +96,7 @@ def find_box(lat_boundaries,long_boundaries):
     
     return box_lat_list,box_long_list
 
-def download_weather_data_raw(latitudes,longitudes,cols,api,speed_up=4):
+def download_weather_data_raw(latitudes,longitudes,cols,api,time_zone,speed_up=4):
     
     # this function extract the weather data from api when provide the lat and long arrays (each raw of latitude)
     # the speed_up factor  determines that how may weather data values paeted by previous copied value, here it is pasted 3 values (4-1=3) by previous copied value.
@@ -104,7 +104,7 @@ def download_weather_data_raw(latitudes,longitudes,cols,api,speed_up=4):
     # create a data frame
     grid_point_Weather_data = pd.DataFrame(columns=["time","longitude", "latitude","tempreture", "humidity","wind_speed","weather_id", "weather_id_group", "weather_id_description", "sunrise", "sunset"])
     srt_time  = datetime.now()
-    piangil_timezone = pytz.timezone('Australia/Sydney')
+    user_timezone = pytz.timezone(time_zone)
 
     for i in range(int(cols/speed_up)): # contralls the amount of the data
 
@@ -118,7 +118,7 @@ def download_weather_data_raw(latitudes,longitudes,cols,api,speed_up=4):
         ##print(srt_time_point)
         ##print(url)
 
-        piangil_time = datetime.now(piangil_timezone) #get time in Australia for data set
+        piangil_time = datetime.now(user_timezone) #get time in Australia for data set
         
         #get data form API as json data (here wile loop is used to prevent to SSL erro failers)
         loop_though = True
@@ -131,10 +131,10 @@ def download_weather_data_raw(latitudes,longitudes,cols,api,speed_up=4):
         data = res.json()
 
         # create the data list that we want from the json data 
-        data_vec = [piangil_time,long, lat, data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_1 = [piangil_time,longitudes[speed_up*i+1], latitudes[speed_up*i+1], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_2 = [piangil_time,longitudes[speed_up*i+2], latitudes[speed_up*i+2], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_3 = [piangil_time,longitudes[speed_up*i+3], latitudes[speed_up*i+3], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+        data_vec = [piangil_time,long, lat, data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"],time_zone), unix_to_user_time(data["sys"]["sunset"],time_zone)]
+        data_vec_1 = [piangil_time,longitudes[speed_up*i+1], latitudes[speed_up*i+1], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"],time_zone), unix_to_user_time(data["sys"]["sunset"],time_zone)]
+        data_vec_2 = [piangil_time,longitudes[speed_up*i+2], latitudes[speed_up*i+2], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"],time_zone), unix_to_user_time(data["sys"]["sunset"],time_zone)]
+        data_vec_3 = [piangil_time,longitudes[speed_up*i+3], latitudes[speed_up*i+3], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"],time_zone), unix_to_user_time(data["sys"]["sunset"],time_zone)]
 
 
         #update the data frame
@@ -147,7 +147,7 @@ def download_weather_data_raw(latitudes,longitudes,cols,api,speed_up=4):
         if(i%((int(cols/speed_up))-1)==0) and (cols%speed_up !=0) and (i!=0):
             num = cols%speed_up
             for j in range(num):
-                data_vec_j = [piangil_time,longitudes[speed_up*i+3+(j+1)], latitudes[speed_up*i+3+(j+1)], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+                data_vec_j = [piangil_time,longitudes[speed_up*i+3+(j+1)], latitudes[speed_up*i+3+(j+1)], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"],time_zone), unix_to_user_time(data["sys"]["sunset"],time_zone)]
                 grid_point_Weather_data.loc[speed_up*i+3+(j+1)] = data_vec_j
                 #print(f"this is done when step is equals to {i+1}")
 
@@ -165,7 +165,7 @@ def download_weather_data_raw(latitudes,longitudes,cols,api,speed_up=4):
     return grid_point_Weather_data
 
 
-def download_weather_data(latitudes,longitudes,cols,raws,api,key,return_dict):
+def download_weather_data(latitudes,longitudes,cols,raws,api,key,return_dict,time_zone):
     
     grid_point_Weather_data = pd.DataFrame(columns=["time","longitude", "latitude","tempreture", "humidity","wind_speed","weather_id", "weather_id_group", "weather_id_description", "sunrise", "sunset"])
     
@@ -176,7 +176,7 @@ def download_weather_data(latitudes,longitudes,cols,raws,api,key,return_dict):
         long_arr = longitudes[i*cols:(i+1)*cols] 
         
         # get weather data for each raw of latitudes and longitudes
-        first_batch_data = download_weather_data_raw(lat_arr,long_arr,cols,api)
+        first_batch_data = download_weather_data_raw(lat_arr,long_arr,cols,api,time_zone)
         
         # combine the pandas dataframe with previoues one
         grid_point_Weather_data = pd.concat([grid_point_Weather_data,first_batch_data], axis=0, ignore_index=True)
@@ -202,8 +202,28 @@ def unix_to_aus(time):
     
     aus_time = datetime.fromtimestamp(time_int, tz = time_zone).strftime('%Y-%m-%d %H:%M:%S')
     #aus_time = datetime.fromtimestamp(time_int, tz = time_zone)
-    
+
     return aus_time
+
+
+def unix_to_user_time(unix_time,time_zone_name):
+    """this function convert UNIX date time to user sepecified date time and output will be string. This function is called
+    inside the download_weather_data_raw function """
+
+    time_int = int(unix_time)  # get integer value
+    timezone = pytz.timezone(time_zone_name)  # Time zone of Australia/Sydney
+
+    # Convert UNIX timestamp to UTC datetime object
+    utc_datetime = datetime.utcfromtimestamp(time_int)
+
+    # Convert UTC datetime to the given time zone
+    user_datetime = utc_datetime.replace(tzinfo=pytz.utc).astimezone(timezone)
+
+    # Format the datetime object as string
+    user_time_str = user_datetime.strftime('%Y-%m-%d %H:%M:%S')
+
+    return user_time_str
+
 
 def lat_long_batches(latitudes,longitudes,cols,raws,threads=NO_OF_THREADS):
     """This function takes lat long grid points, num of raws and cols and then returns lat long points batches to call parallel api callings"""
@@ -222,7 +242,7 @@ def lat_long_batches(latitudes,longitudes,cols,raws,threads=NO_OF_THREADS):
     return lat_batches,long_batches
 
 
-def create_weather_dataset(lat_boundaries,long_boundaries,api_keys):
+def create_weather_dataset(lat_boundaries,long_boundaries,api_keys,time_zone):
     """This is the final function that we need to call to download the weather dataset"""   
     latitudes,longitudes,cols, raws = user_input_boundaries_to_latlong(lat_boundaries,long_boundaries)
     lat_batches,long_batches =  lat_long_batches(latitudes,longitudes,cols,raws)
@@ -232,7 +252,7 @@ def create_weather_dataset(lat_boundaries,long_boundaries,api_keys):
     jobs = [] # this list contains the all threads
     
     for i in range(NO_OF_THREADS):
-        p = multiprocessing.Process(target=download_weather_data, args=(lat_batches[i],long_batches[i],cols,int(len(lat_batches[i])/cols),api_keys[i],i, return_dict))
+        p = multiprocessing.Process(target=download_weather_data, args=(lat_batches[i],long_batches[i],cols,int(len(lat_batches[i])/cols),api_keys[i],i, return_dict,time_zone))
         jobs.append(p)
         p.start()
 
@@ -248,8 +268,7 @@ def create_weather_dataset(lat_boundaries,long_boundaries,api_keys):
     dataset.drop(["id"], axis=1, inplace=True)
     id_col = np.arange(1,len(dataset)+1,1)
     dataset["id"] = id_col
-    dataset.set_index([np.arange(0,len(dataset),1)], inplace=True)
-        
+    dataset.set_index([np.arange(0,len(dataset),1)], inplace=True) 
     #dataset.to_csv("./results/csv/weather_dataset.csv", index=False)
     return dataset,latitudes,longitudes,cols,raws
 

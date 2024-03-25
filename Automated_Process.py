@@ -44,7 +44,6 @@ from datetime import datetime
 SPATIAL_MAP_SAVE_PATH = "./results/maps/spatial_map.html"
 FINAL_MAP_SAVE_PATH = "./results/maps/final_map.html"
 MS_TO_KMH = 3.6
-
 #HIVE_DETAILS_QUERY = "SELECT * FROM hive_details"
 #WEATHER_DESCRIPTION_QUERY = "SELECT * FROM weather_description_map"
 #PDF_PI_FILE_QUERY = "SELECT * FROM grid_pdf_pi"
@@ -458,10 +457,10 @@ def download_weather_data_raw(latitudes,longitudes,cols,speed_up=4):
         data = res.json()
 
         # create the data list that we want from the json data 
-        data_vec = [piangil_time,long, lat, data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_1 = [piangil_time,longitudes[speed_up*i+1], latitudes[speed_up*i+1], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_2 = [piangil_time,longitudes[speed_up*i+2], latitudes[speed_up*i+2], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
-        data_vec_3 = [piangil_time,longitudes[speed_up*i+3], latitudes[speed_up*i+3], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+        data_vec = [piangil_time,long, lat, data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"]), unix_to_user_time(data["sys"]["sunset"])]
+        data_vec_1 = [piangil_time,longitudes[speed_up*i+1], latitudes[speed_up*i+1], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"]), unix_to_user_time(data["sys"]["sunset"])]
+        data_vec_2 = [piangil_time,longitudes[speed_up*i+2], latitudes[speed_up*i+2], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"]), unix_to_user_time(data["sys"]["sunset"])]
+        data_vec_3 = [piangil_time,longitudes[speed_up*i+3], latitudes[speed_up*i+3], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"]), unix_to_user_time(data["sys"]["sunset"])]
 
 
         #update the data frame
@@ -474,7 +473,7 @@ def download_weather_data_raw(latitudes,longitudes,cols,speed_up=4):
         if(i%((int(cols/speed_up))-1)==0) and (cols%speed_up !=0) and (i!=0):
             num = cols%speed_up
             for j in range(num):
-                data_vec_j = [piangil_time,longitudes[speed_up*i+3+(j+1)], latitudes[speed_up*i+3+(j+1)], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_aus(data["sys"]["sunrise"]), unix_to_aus(data["sys"]["sunset"])]
+                data_vec_j = [piangil_time,longitudes[speed_up*i+3+(j+1)], latitudes[speed_up*i+3+(j+1)], data["main"]["temp"], data["main"]["humidity"], MS_TO_KMH*data["wind"]["speed"], data["weather"][0]["id"], data["weather"][0]["main"], data["weather"][0]["description"], unix_to_user_time(data["sys"]["sunrise"]), unix_to_user_time(data["sys"]["sunset"])]
                 grid_point_Weather_data.loc[speed_up*i+3+(j+1)] = data_vec_j
                 #print(f"this is done when step is equals to {i+1}")
 
@@ -538,13 +537,33 @@ def unix_to_aus(time):
     return aus_time
 
 
+def unix_to_user_time(unix_time,time_zone_name):
+    """this function convert UNIX date time to user sepecified date time and output will be string. This function is called
+    inside the download_weather_data_raw function """
+
+    time_int = int(unix_time)  # get integer value
+    timezone = pytz.timezone(time_zone_name)  # Time zone of Australia/Sydney
+
+    # Convert UNIX timestamp to UTC datetime object
+    utc_datetime = datetime.utcfromtimestamp(time_int)
+
+    # Convert UTC datetime to the given time zone
+    user_datetime = utc_datetime.replace(tzinfo=pytz.utc).astimezone(timezone)
+
+    # Format the datetime object as string
+    user_time_str = user_datetime.strftime('%Y-%m-%d %H:%M:%S')
+
+    return user_time_str
+
+
+
 def add_date_time(dataset):
     
     """This function add a date column and time column for a given pandas dataframe using Sunrice column data
      and Time column data."""
     
     # create a date column as first column
-    date_column = dataset["sunrise"].apply(lambda x: ((str(x)).split())[0])
+    date_column = dataset["sunset"].apply(lambda x: ((str(x)).split())[0])
     dataset.insert(1, "date",date_column)
 
     # update the Time column
@@ -1119,7 +1138,7 @@ def final_maps_api(lat_boundaries,long_boundaries,PDF_PI_TABLE,FINAL_WEATHER_TAB
     return spatial_html_content,finalmap_html_content
 
 
-def final_maps_api_parallel(lat_boundaries,long_boundaries,api_keys,bid,fid):
+def final_maps_api_parallel(lat_boundaries,long_boundaries,api_keys,bid,fid,time_zone):
 
     """This is the final fuction that we need to call when we are using api when we use user defined boundaries and parallel downloading"""
     HIVE_DETAILS_TABLE = f"{HIVE_DETAILS_TABLE_PREFIX}_{bid}_{fid}"
@@ -1127,7 +1146,7 @@ def final_maps_api_parallel(lat_boundaries,long_boundaries,api_keys,bid,fid):
     FINAL_WEATHER_TABLE = f"{FINAL_WEATHER_TABLE_PREFIX}_{bid}_{fid}"
     MAPS_TABLE = f"{MAPS_TABLE_PREFIX}_{bid}_{fid}"
     
-    dataset,lat,long,cols,raws = create_weather_dataset(lat_boundaries,long_boundaries,api_keys)
+    dataset,lat,long,cols,raws = create_weather_dataset(lat_boundaries,long_boundaries,api_keys,time_zone)
     dataset = add_date_time(dataset)
     dataset = final_probability(dataset,lat,long,PDF_PI_TABLE,HIVE_DETAILS_TABLE)
        
