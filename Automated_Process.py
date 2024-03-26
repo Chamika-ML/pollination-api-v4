@@ -131,7 +131,7 @@ def table_exist_mysql_database(table_name, credentials=MYSQL_CREDENTIALS):
     return exist
 
 
-def insert_values_totable(table_name,spatial_map,final_map,credentials=MYSQL_CREDENTIALS):
+def insert_values_totable(table_name,spatial_map,final_map,time_zone_name,credentials=MYSQL_CREDENTIALS):
 
     """This function inserts data to maps table. if maps tables not exist then first it will creates a maps table and then insert the data"""
      # Connect to the MySQL server
@@ -157,8 +157,12 @@ def insert_values_totable(table_name,spatial_map,final_map,credentials=MYSQL_CRE
         cursor.execute(create_table_sql)
         connection.commit()
 
-    current_date = datetime.now().date()
-    current_time = datetime.now().time()
+    current_datetime_utc = datetime.now(pytz.utc)
+    user_timezone_obj = pytz.timezone(time_zone_name)
+    current_datetime_target = current_datetime_utc.astimezone(user_timezone_obj)
+
+    current_date = current_datetime_target.date()
+    current_time = current_datetime_target.time()
 
     insert_sql = f"""
     INSERT INTO {table_name} (date, time, spatial_map, final_map)
@@ -1165,7 +1169,7 @@ def final_maps_api_parallel(lat_boundaries,long_boundaries,api_keys,bid,fid,time
         finalmap_html_content_data = file_fn.read()
     
     # insert map values to the maps table
-    insert_values_totable(MAPS_TABLE,spatial_html_content_data,finalmap_html_content_data)
+    insert_values_totable(MAPS_TABLE,spatial_html_content_data,finalmap_html_content_data,time_zone)
     # remove saved maps on the server
     os.remove(SPATIAL_MAP_SAVE_PATH)
     os.remove(FINAL_MAP_SAVE_PATH)

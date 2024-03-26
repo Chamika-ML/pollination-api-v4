@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import requests
 import ast
+from datetime import datetime
 from Automated_Process import final_maps_api_parallel, api_to_latlong, read_data_from_mesql, distance_matrix, probability_matrix, convert_one_probability, create_mysql_table
 from Automated_Process import PDF_PI_TABLE_PREFIX, HIVE_DETAILS_TABLE_PREFIX
 from download_weather_data import temporal_processing_time_parallel
@@ -58,6 +59,135 @@ ma = Marshmallow()
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://dilshan:1234@localhost/broodbox'
 db.init_app(app)
 
+# Weather details class
+# Global dictionary to store dynamically created Weather classes
+dynamic_weather_classes = {}
+
+# Weather details class
+def create_weather_class(business_id, farm_id):
+    table_name = f"final_weather_data_{business_id}_{farm_id}"
+    
+    # Check if the Weather class for this table already exists
+    if table_name in dynamic_weather_classes:
+        Weather = dynamic_weather_classes[table_name]
+    else:
+        class Weather(db.Model): 
+            __tablename__ = table_name
+            
+            time = db.Column(db.String(255), nullable=False)
+            date =  db.Column(db.String(255), nullable=False)
+            longitude = db.Column(db.Double, nullable=False)
+            latitude = db.Column(db.Double, nullable=False)
+            tempreture = db.Column(db.Float, nullable=False)
+            humidity = db.Column(db.Float, nullable=False)
+            wind_speed = db.Column(db.Float, nullable=False)
+            weather_id = db.Column(db.Integer, nullable=False)
+            weather_id_group = db.Column(db.String(255), nullable=False)
+            weather_id_description = db.Column(db.String(255), nullable=False)
+            sunrise = db.Column(db.Date, nullable=False)
+            sunset = db.Column(db.Date, nullable=False)
+            id = db.Column(db.Integer, nullable=False)
+            weather_condition_prob = db.Column(db.Float, nullable=False)
+            hour_prob =  db.Column(db.Integer, nullable=False)
+            tempreture_prob = db.Column(db.Float, nullable=False)
+            humidity_prob = db.Column(db.Float, nullable=False)
+            wind_prob = db.Column(db.Float, nullable=False)
+            weather_prob = db.Column(db.Float, nullable=False)
+            spatial_prob = db.Column(db.Float, nullable=False)
+            final_prob = db.Column(db.Float, nullable=False)
+            mask = db.Column(db.Integer, nullable=False)
+
+
+            __table_args__ = (
+                PrimaryKeyConstraint('id'),
+            )
+
+            def __init__(self, time, date, longitude, latitude, tempreture, humidity, wind_speed, weather_id, weather_id_group, weather_id_description, sunrise, sunset, id, 
+                         weather_condition_prob, hour_prob, tempreture_prob, humidity_prob, wind_prob, weather_prob, spatial_prob, final_prob, mask):
+
+                self.time = time
+                self.date = date 
+                self.longitude = longitude
+                self.latitude = latitude
+                self.tempreture = tempreture
+                self.humidity = humidity
+                self.wind_speed = wind_speed 
+                self.weather_id = weather_id
+                self.weather_id_group = weather_id_group
+                self.weather_id_description = weather_id_description
+                self.sunrise = sunrise
+                self.sunset = sunset
+                self.id = id
+                self.weather_condition_prob = weather_condition_prob
+                self.hour_prob = hour_prob
+                self.tempreture_prob = tempreture_prob
+                self.humidity_prob = humidity_prob
+                self.wind_prob = wind_prob
+                self.weather_prob = weather_prob
+                self.spatial_prob = spatial_prob
+                self.final_prob = final_prob
+                self.mask = mask
+
+            
+        # Save the class in the global dictionary
+        dynamic_weather_classes[table_name] = Weather
+
+    return Weather
+
+
+class WeatherSchema(ma.Schema):
+    class Meta:
+        fields = ('time', 'date', 'longitude', 'latitude', 'tempreture', 'humidity', 'wind_speed', 'weather_id', 'weather_id_group', 'weather_id_description', 'sunrise', 'sunset', 
+                  'id', 'weather_condition_prob', 'hour_prob', 'tempreture_prob', 'humidity_prob', 'wind_prob', 'weather_prob', 'spatial_prob', 'final_prob')
+
+Weather_schema = WeatherSchema()
+Weathers_schema  = WeatherSchema(many=True)
+
+# Maps details class
+# Global dictionary to store dynamically created Maps classes
+dynamic_maps_classes = {}
+
+# Maps details class
+def create_map_class(business_id, farm_id):
+    table_name = f"maps_{business_id}_{farm_id}"
+    
+    # Check if the Maps class for this table already exists
+    if table_name in dynamic_maps_classes:
+        Map = dynamic_maps_classes[table_name]
+    else:
+        class Map(db.Model): 
+            __tablename__ = table_name
+            
+            id = db.Column(db.Integer, nullable=False)         
+            date =  db.Column(db.Date, nullable=False)
+            time = db.Column(db.Time, nullable=False)
+            spatial_map = db.Column(db.String, nullable=False)
+            final_map = db.Column(db.String, nullable=False)
+
+
+            __table_args__ = (
+                PrimaryKeyConstraint('id'),
+            )
+
+            def __init__(self, id, date, time, spatial_map, final_map):
+                self.id = id
+                self.date = date
+                self.time = time
+                self.spatial_map = spatial_map
+                self.final_map = final_map
+
+        # Save the class in the global dictionary
+        dynamic_maps_classes[table_name] = Map
+
+    return Map
+
+
+class MapsSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'date', 'time', 'spatial_map', 'final_map')
+
+Map_schema = MapsSchema()
+Maps_schema  = MapsSchema(many=True)
 
 @app.route("/",  methods=['GET'])
 
@@ -172,137 +302,6 @@ def update_pdf_pi_table():
         return json_dump
 
 
-# Weather details class
-# Global dictionary to store dynamically created Weather classes
-dynamic_weather_classes = {}
-
-# Weather details class
-def create_weather_class(business_id, farm_id):
-    table_name = f"final_weather_data_{business_id}_{farm_id}"
-    
-    # Check if the Weather class for this table already exists
-    if table_name in dynamic_weather_classes:
-        Weather = dynamic_weather_classes[table_name]
-    else:
-        class Weather(db.Model): 
-            __tablename__ = table_name
-            
-            time = db.Column(db.String(255), nullable=False)
-            date =  db.Column(db.String(255), nullable=False)
-            longitude = db.Column(db.Double, nullable=False)
-            latitude = db.Column(db.Double, nullable=False)
-            tempreture = db.Column(db.Float, nullable=False)
-            humidity = db.Column(db.Float, nullable=False)
-            wind_speed = db.Column(db.Float, nullable=False)
-            weather_id = db.Column(db.Integer, nullable=False)
-            weather_id_group = db.Column(db.String(255), nullable=False)
-            weather_id_description = db.Column(db.String(255), nullable=False)
-            sunrise = db.Column(db.Date, nullable=False)
-            sunset = db.Column(db.Date, nullable=False)
-            id = db.Column(db.Integer, nullable=False)
-            weather_condition_prob = db.Column(db.Float, nullable=False)
-            hour_prob =  db.Column(db.Integer, nullable=False)
-            tempreture_prob = db.Column(db.Float, nullable=False)
-            humidity_prob = db.Column(db.Float, nullable=False)
-            wind_prob = db.Column(db.Float, nullable=False)
-            weather_prob = db.Column(db.Float, nullable=False)
-            spatial_prob = db.Column(db.Float, nullable=False)
-            final_prob = db.Column(db.Float, nullable=False)
-            mask = db.Column(db.Integer, nullable=False)
-
-
-            __table_args__ = (
-                PrimaryKeyConstraint('id'),
-            )
-
-            def __init__(self, time, date, longitude, latitude, tempreture, humidity, wind_speed, weather_id, weather_id_group, weather_id_description, sunrise, sunset, id, 
-                         weather_condition_prob, hour_prob, tempreture_prob, humidity_prob, wind_prob, weather_prob, spatial_prob, final_prob, mask):
-
-                self.time = time
-                self.date = date 
-                self.longitude = longitude
-                self.latitude = latitude
-                self.tempreture = tempreture
-                self.humidity = humidity
-                self.wind_speed = wind_speed 
-                self.weather_id = weather_id
-                self.weather_id_group = weather_id_group
-                self.weather_id_description = weather_id_description
-                self.sunrise = sunrise
-                self.sunset = sunset
-                self.id = id
-                self.weather_condition_prob = weather_condition_prob
-                self.hour_prob = hour_prob
-                self.tempreture_prob = tempreture_prob
-                self.humidity_prob = humidity_prob
-                self.wind_prob = wind_prob
-                self.weather_prob = weather_prob
-                self.spatial_prob = spatial_prob
-                self.final_prob = final_prob
-                self.mask = mask
-
-            
-        # Save the class in the global dictionary
-        dynamic_weather_classes[table_name] = Weather
-
-    return Weather
-
-
-class WeatherSchema(ma.Schema):
-    class Meta:
-        fields = ('time', 'date', 'longitude', 'latitude', 'tempreture', 'humidity', 'wind_speed', 'weather_id', 'weather_id_group', 'weather_id_description', 'sunrise', 'sunset', 
-                  'id', 'weather_condition_prob', 'hour_prob', 'tempreture_prob', 'humidity_prob', 'wind_prob', 'weather_prob', 'spatial_prob', 'final_prob')
-
-Weather_schema = WeatherSchema()
-Weathers_schema  = WeatherSchema(many=True)
-
-
-# Maps details class
-# Global dictionary to store dynamically created Maps classes
-dynamic_maps_classes = {}
-
-# Maps details class
-def create_map_class(business_id, farm_id):
-    table_name = f"maps_{business_id}_{farm_id}"
-    
-    # Check if the Maps class for this table already exists
-    if table_name in dynamic_maps_classes:
-        Map = dynamic_maps_classes[table_name]
-    else:
-        class Map(db.Model): 
-            __tablename__ = table_name
-            
-            id = db.Column(db.Integer, nullable=False)         
-            date =  db.Column(db.Date, nullable=False)
-            time = db.Column(db.Time, nullable=False)
-            spatial_map = db.Column(db.String, nullable=False)
-            final_map = db.Column(db.String, nullable=False)
-
-
-            __table_args__ = (
-                PrimaryKeyConstraint('id'),
-            )
-
-            def __init__(self, id, date, time, spatial_map, final_map):
-                self.id = id
-                self.date = date
-                self.time = time
-                self.spatial_map = spatial_map
-                self.final_map = final_map
-
-        # Save the class in the global dictionary
-        dynamic_maps_classes[table_name] = Map
-
-    return Map
-
-
-class MapsSchema(ma.Schema):
-    class Meta:
-        fields = ('id', 'date', 'time', 'spatial_map', 'final_map')
-
-Map_schema = MapsSchema()
-Maps_schema  = MapsSchema(many=True)
-
 
 # maps returning function
 @app.route('/map/get_specific/<business_id>/<farm_id>/<int:current_id>', methods=['GET'])
@@ -325,6 +324,31 @@ def get_specific_map(business_id, farm_id,current_id):
 
     except Exception as e:
         return jsonify({"error": str(e)})
+
+
+@app.route('/map/get_maps_by_date/<business_id>/<farm_id>', methods=['GET'])
+def get_maps_on_date(business_id, farm_id):
+    try:  
+        # Get the date from the request query parameter (format: YYYY-MM-DD)
+        target_date_str = request.args.get('date')
+        
+        # Parse the target date string into a datetime object
+        target_date = datetime.strptime(target_date_str, '%Y-%m-%d') if target_date_str else None
+        
+        Map = create_map_class(business_id, farm_id)
+        
+        # Filter maps based on the provided date and direction
+        map_result = Map.query.filter(Map.date == target_date).all()
+ 
+        if not map_result:
+            return jsonify({"error": "map not found"})
+
+        map_data = Maps_schema.dump(map_result)
+        return jsonify(map_data)
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 
 
 # weather dataset returning function
