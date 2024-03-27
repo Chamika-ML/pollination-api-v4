@@ -15,6 +15,8 @@ from shapely.geometry.polygon import Polygon
 import folium
 from folium.raster_layers import ImageOverlay
 from folium import plugins
+from bs4 import BeautifulSoup
+import re
 
 import requests
 import time
@@ -49,6 +51,7 @@ MS_TO_KMH = 3.6
 #PDF_PI_FILE_QUERY = "SELECT * FROM grid_pdf_pi"
 #FINAL_WEATHER_DATA_FILE_QUERY = "SELECT * FROM final_weather_data"
 
+HIVE_DETAILS_URL_PREFIX = "http://ec2-52-65-94-246.ap-southeast-2.compute.amazonaws.com:5000/hive"
 WEATHER_DESCRIPTION_TABLE = "weather_description_map"
 HIVE_DETAILS_TABLE_PREFIX = "hive_details"
 PDF_PI_TABLE_PREFIX = "grid_pdf_pi"
@@ -1105,6 +1108,70 @@ def final_heatmap(lat_boundaries, long_boundaries, dataset, image_path=" "):
     return m
 
 
+
+def modify_map_html(map_path, bid, fid, hive_details_url_prefix=HIVE_DETAILS_URL_PREFIX):
+ 
+    """ This function reads the  guive map html file and add the beehive locations as marker points on the map html and save
+    flie with same name"""
+    
+    # get hive locations
+    hive_details_url = f"{hive_details_url_prefix}/{bid}/{fid}"
+    response = requests.get(hive_details_url)
+    data = response.json()
+
+    hive_locations = []
+    for point in data["hive_details"]:
+        single_point = [point["latitude"], point["longitude"]]
+        hive_locations.append(single_point)
+        single_point = []
+        
+    with open(map_path, 'r') as file:
+        html_content = file.read()
+
+    # Parse the HTML content
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Find all script tags
+    script_tags = soup.find_all('script')
+
+    # Get the last script tag
+    final_script_tag = script_tags[-1]
+
+    # Extract JavaScript code as text
+    javascript_code = final_script_tag.string
+
+    # find map variable name
+    variable_pattern = r'\bvar\s+([a-zA-Z_$][0-9a-zA-Z_$]*)\b'
+    variable_names = re.findall(variable_pattern, javascript_code)
+    map_variable_name = variable_names[0]
+
+    # Modify the JavaScript code string
+    modified_javascript_code = javascript_code + f"""
+
+        var beehiveLocations = {hive_locations}
+
+        // Define a custom icon with the desired color
+        var customIcon = L.AwesomeMarkers.icon({{ 
+            icon: 'home',
+            markerColor: 'darkpurple'
+   
+        }});
+
+        // Loop through the beehiveLocations array and add markers with the custom icon to the map
+        for (const location of beehiveLocations) {{
+            L.marker(location, {{ icon: customIcon }}).addTo({map_variable_name});
+        }}
+
+    """
+
+    # Replace the string content of the final script tag
+    final_script_tag.string.replace_with(modified_javascript_code)
+
+    # save the modified file
+    with open(map_path, 'w') as file:
+        file.write(soup.prettify())
+
+        
 # ## Final calling Functions 
 
 # In[11]:
@@ -1158,9 +1225,12 @@ def final_maps_api_parallel(lat_boundaries,long_boundaries,api_keys,bid,fid,time
     final_map = final_heatmap(lat_boundaries, long_boundaries,dataset)
     create_mysql_table(dataset, FINAL_WEATHER_TABLE)
 
-    
     spatial_map.save(SPATIAL_MAP_SAVE_PATH)
     final_map.save(FINAL_MAP_SAVE_PATH)
+
+    # add hive locations on the maps
+    modify_map_html(SPATIAL_MAP_SAVE_PATH, bid, fid)
+    modify_map_html(FINAL_MAP_SAVE_PATH, bid, fid)
 
     with open(SPATIAL_MAP_SAVE_PATH, 'r', encoding='utf-8') as file_sp:
         spatial_html_content_data = file_sp.read()
